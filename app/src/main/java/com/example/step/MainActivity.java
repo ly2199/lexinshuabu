@@ -42,6 +42,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private String accessToken= "";
     @RequiresApi(api = Build.VERSION_CODES.N)
 
+    /*
+    hashmap的排序方法
+     */
     private static class ValueComparator implements Comparator<Map.Entry<Integer, Integer>>
     {
         public int compare(Map.Entry<Integer,Integer> m, Map.Entry<Integer,Integer> n)
@@ -49,7 +52,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             return n.getValue()-m.getValue();
         }
     }
-    @RequiresApi(api = Build.VERSION_CODES.N)
+    @RequiresApi(api = Build.VERSION_CODES.N)   //解决版本问题
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -59,15 +62,22 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION);
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
-        if (android.os.Build.VERSION.SDK_INT > 9) {
-            StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
-            StrictMode.setThreadPolicy(policy);
-        }
+
+        /*
+        解决主线程不能访问网络的问题
+         */
+        StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
+        StrictMode.setThreadPolicy(policy);
+
         init();
     }
 
     @RequiresApi(api = Build.VERSION_CODES.N)
     private void init() {
+
+        /*
+        初始化ui
+         */
         exit_bt = findViewById(R.id.exit_bt);
         login_bt = findViewById(R.id.login_bt);
         find_psw = findViewById(R.id.find_psw);
@@ -75,6 +85,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         et_password = findViewById(R.id.et_password);
 
         try{
+         /*
+         检查cookie是否过期
+          */
         userId=load().getString("userId");
         accessToken=load().getString("accessToken");
         String step_data = StepActivity.step(userId, accessToken,sub_step_d);
@@ -83,15 +96,16 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         if (step_status.getInt("code")==200){
             step_update(step_data);
         }else{
-            show_message(step_status.getString("msg"),3000);
-
-        }
-
+                show_message(step_status.getString("msg"),3000);
+            }
         }catch (JSONException e) {
             show_message("意外错误"+e.getMessage(),3000);
             e.printStackTrace();
         }
 
+        /*
+        退出按钮监听
+         */
         exit_bt.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -105,6 +119,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             }
         });
 
+        /*
+        密码找回按钮监听
+         */
         find_psw.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -116,11 +133,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         login_bt.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                //开始登录，获取用户名和密码 getText().toString().trim();
+                //获取用户名和密码 getText().toString().trim();
                 username=et_username.getText().toString().trim();
                 password=et_password.getText().toString().trim();
                 //对当前密码进行md5
                 String md5Psw= MD5Utils.md5(password);
+
+                /*
+                输入合法性检查
+                 */
                 if(TextUtils.isEmpty(username)){
                     show_message("请输入用户名",1200);
                     return;
@@ -128,6 +149,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     show_message("请输入密码",1200);
                     return;
                 }
+
+                /*
+                开始登录
+                 */
                 String login_static = PostActivity.login(username,md5Psw);
                 try {
                     JSONObject re_login=new JSONObject(login_static);
@@ -136,7 +161,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     if (code==200){
                         show_message("登录成功！",1200);
                         String save_data = re_login.getString("data");
-                        save(save_data);
+                        save(save_data);   //获取到cookie并保存
+
+                        /*
+                        获取步数信息并跳转页面
+                         */
                         userId=load().getString("userId");
                         accessToken=load().getString("accessToken");
                         String step_data = StepActivity.step(userId, accessToken,sub_step_d);
@@ -147,7 +176,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                             show_message("跳转失败："+step_status.getString("msg"),1200);
 
                         }
-//                        System.out.println(step_data);
                     }else{
                         final Toast toast=Toast.makeText(getApplicationContext(), "登录失败："+msg, Toast.LENGTH_LONG);
                         show_message("登录失败："+msg,1200);
@@ -163,19 +191,31 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         });
 
     }
+
+    /*
+    步数更新页面
+     */
     @RequiresApi(api = Build.VERSION_CODES.N)
     private void step_update(final String step_data) throws JSONException {
         Integer get_step = 0;  //保存获取到的当前步数
+        HashMap<Integer,Integer> all_step = new HashMap<Integer,Integer>();
+        List<Map.Entry<Integer,Integer>> list=new ArrayList<>();
+
+        /*
+        设置页面并初始化ui
+         */
         setContentView(R.layout.step_main);
         step_now = findViewById(R.id.step_now);
         sub_step = findViewById(R.id.sub_step);
         shuxin = findViewById(R.id.shuaxin);
         exit_b = findViewById(R.id.exit_b);
         logout = findViewById(R.id.logout);
+
+        /*
+        设置输入只接受数值
+         */
         DigitsKeyListener numericOnlyListener = new DigitsKeyListener(false,true);
-        sub_step.setKeyListener(numericOnlyListener);       //设定只接受数字
-        HashMap<Integer,Integer> all_step = new HashMap<Integer,Integer>();
-        List<Map.Entry<Integer,Integer>> list=new ArrayList<>();
+        sub_step.setKeyListener(numericOnlyListener);
 
         /*
         读取获取到的信息并格式化
@@ -197,9 +237,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         Collections.sort(list,vc);
         get_step=list.get(0).getValue();
 
+        /*
+        设置当前步数并显示
+         */
         CharSequence charSequence = "当前步数："+get_step;
-        step_now.setText(charSequence);//设置显示步数
+        step_now.setText(charSequence);
         final Integer finalGet_step = get_step;
+
         shuxin.setOnClickListener(new View.OnClickListener() {
             @RequiresApi(api = Build.VERSION_CODES.N)
             @Override
@@ -207,6 +251,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 try {
                     boolean s=true;  //定义条件判断
                     sub_step_d = sub_step.getText().toString().trim();
+
+                    /*
+                    输入合法性检查
+                     */
                     if(TextUtils.isEmpty(sub_step_d)||sub_step_d.length()>6){
                         s=false;
                         sub_step_d="0";
@@ -270,7 +318,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     /*
     配置信息读取
      */
-
     private JSONObject load() throws JSONException {
         FileInputStream in=null;
         BufferedReader reader=null;
@@ -302,8 +349,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         return load_data_g;
 
     }
+
     /*
-    保存登录信息
+    保存cookie
      */
     private void save(String login_data) {
         FileOutputStream out=null;
@@ -328,6 +376,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
 
     }
+
+    /*
+    调用系统弹框显示提示信息
+     */
     private void show_message(String msg,int time){
         final Toast toast = Toast.makeText(getApplicationContext(), msg, Toast.LENGTH_LONG);
         toast.show();
@@ -340,7 +392,5 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     @Override
-    public void onClick(View v) {
-
-    }
+    public void onClick(View v) {}
 }

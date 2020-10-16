@@ -25,7 +25,7 @@ public class PostActivity {
         return result;
     }
     public static String sendJsonPost(String apiUrl,String Json,String cookie) {
-        // HttpClient 6.0被抛弃了
+
         String result = "";
         BufferedReader reader = null;
         try {
